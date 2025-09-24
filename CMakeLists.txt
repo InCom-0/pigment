@@ -10,7 +10,7 @@ target_sources(spectral_cpp PRIVATE src/main.cpp)
 target_link_libraries(spectral_cpp PRIVATE "-lstdc++exp")
 
 if(MINGW AND (CMAKE_BUILD_TYPE STREQUAL "Release"))
-    target_link_options(Scratch PUBLIC -static -static-libgcc -static-libstdc++)
+    target_link_options(spectral_cpp PUBLIC -static -static-libgcc -static-libstdc++)
 endif()
 
 target_sources(spectral_cpp
