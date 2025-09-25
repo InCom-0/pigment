@@ -40,6 +40,7 @@ namespace pigment {
 inline constexpr int    SIZE  = 38;
 inline constexpr double GAMMA = 2.4;
 
+namespace detail {
 // Definition of constant spectral data and conversion matrices
 // Contains arrays for various spectra (White, Cyan, Magenta, Yellow, Red, Green, Blue).
 namespace BASE_SPECTRA {
@@ -107,7 +108,7 @@ inline constexpr std::array<double, SIZE> B = {
     0.015764589232951,  0.0157648147772649, 0.0157648801149616};
 } // namespace BASE_SPECTRA
 
-// CIE Color Matching Functions weighted by D65 Standard Illuminant
+// detail::CIE Color Matching Functions weighted by D65 Standard Illuminant
 namespace CIE {
 inline constexpr std::array<std::array<double, 38>, 3> CMF = {
     {{0.0000646919989576, 0.0002194098998132, 0.0011205743509343, 0.0037666134117111, 0.011880553603799,
@@ -196,45 +197,101 @@ inline constexpr std::array<std::array<double, 3>, 3> LAB_LMS = {{{1.0, 0.396337
                                                                   {1.0, -0.1055613458156586, -0.0638541728258133},
                                                                   {1.0, -0.0894841775298119, -1.2914855480194092}}};
 } // namespace CONVERSION
+} // namespace detail
+
+struct Converter {
+    static constexpr std::array<double, 3> sRGB_to_lRGB(const std::array<int, 3> &sRGB);
+    static constexpr std::array<int, 3>    lRGB_to_sRGB(const std::vector<double> &lRGB);
+    static constexpr std::vector<double>   XYZ_to_lRGB(const std::vector<double> &XYZ);
+    static constexpr std::vector<double>   lRGB_to_XYZ(const std::vector<double> &lRGB);
+    static constexpr std::vector<double>   XYZ_to_OKLab(const std::vector<double> &XYZ);
+    static constexpr std::vector<double>   OKLab_to_XYZ(const std::vector<double> &OKLab);
+    static constexpr std::vector<double>   OKLab_to_OKLCh(const std::vector<double> &OKLab);
+    static constexpr std::vector<double>   OKLCh_to_OKLab(const std::vector<double> &OKLCh);
+};
+
+namespace detail {
+// Primary template: defaults to false
+template <typename T>
+struct is_std_array : std::false_type {};
+
+// Partial specialization for std::array
+template <typename T, std::size_t N>
+struct is_std_array<std::array<T, N>> : std::true_type {};
+
+// Helper variable template (C++14+)
+template <typename T>
+inline constexpr bool is_std_array_v = is_std_array<T>::value;
+
+
+template <typename M, typename V>
+requires std::ranges::range<M> && std::ranges::range<std::ranges::range_value_t<M>> && std::ranges::range<V> &&
+         is_std_array_v<M>
+auto mulMatVec(M const &matrix, V const &vec) -> std::array<double, std::tuple_size<M>{}> {
+    std::size_t const                        rows = std::tuple_size<M>{};
+    std::size_t const                        cols = vec.size();
+    std::array<double, std::tuple_size<M>{}> out;
+    for (std::size_t i = 0; i < rows; ++i) {
+        out[i] = 0.0;
+        for (std::size_t j = 0; j < cols; ++j) { out[i] += matrix[i][j] * vec[j]; }
+    }
+    return out;
+}
+
+template <typename M, typename V>
+requires std::ranges::range<M> && std::ranges::range<std::ranges::range_value_t<M>> && std::ranges::range<V>
+auto mulMatVec(M const &matrix, V const &vec) {
+    std::size_t const   rows = matrix.size();
+    std::size_t const   cols = vec.size();
+    std::vector<double> out(rows, 0.0);
+    for (std::size_t i = 0; i < rows; ++i) {
+        for (std::size_t j = 0; j < cols; ++j) { out[i] += matrix[i][j] * vec[j]; }
+    }
+    return out;
+}
+
+} // namespace detail
 
 // Forward declarations of free functions
-std::vector<double> sRGB_to_lRGB(const std::array<int, 3> &sRGB);
-std::array<int, 3>  lRGB_to_sRGB(const std::vector<double> &lRGB);
-std::vector<double> XYZ_to_lRGB(const std::vector<double> &XYZ);
-std::vector<double> lRGB_to_XYZ(const std::vector<double> &lRGB);
-std::vector<double> XYZ_to_OKLab(const std::vector<double> &XYZ);
-std::vector<double> OKLab_to_XYZ(const std::vector<double> &OKLab);
-std::vector<double> OKLab_to_OKLCh(const std::vector<double> &OKLab);
-std::vector<double> OKLCh_to_OKLab(const std::vector<double> &OKLCh);
-bool                inGamut(const std::vector<double> &lRGB, double epsilon = 0.0);
-double              deltaEOK(const std::vector<double> &OK1, const std::vector<double> &OK2);
-double              KS_func(double R);
-double              KM_func(double KS);
-std::vector<double> parseSpectralReflectanceFromLRGB(const std::vector<double> &lRGB);
-std::array<int, 4>  parseCssColor(const std::string &str);
-std::vector<double> mulMatVec(const std::vector<std::vector<double>> &M, const std::vector<double> &v);
-std::vector<double> mulMatVec(const std::array<std::array<double, 38>, 3> &M, const std::vector<double> &v);
-std::vector<double> mulMatVec(const std::array<std::array<double, 3>, 3> &M, const std::vector<double> &v);
+std::array<double, 3> sRGB_to_lRGB(const std::array<int, 3> &sRGB);
+std::array<int, 3>    lRGB_to_sRGB(const std::array<double, 3> &lRGB);
+std::array<double, 3> XYZ_to_lRGB(const std::array<double, 3> &XYZ);
+std::array<double, 3> lRGB_to_XYZ(const std::array<double, 3> &lRGB);
+std::array<double, 3> XYZ_to_OKLab(const std::array<double, 3> &XYZ);
+std::array<double, 3> OKLab_to_XYZ(const std::array<double, 3> &OKLab);
+std::array<double, 3> OKLab_to_OKLCh(const std::array<double, 3> &OKLab);
+std::array<double, 3> OKLCh_to_OKLab(const std::array<double, 3> &OKLCh);
+
+
+bool                     inGamut(const std::array<double, 3> &lRGB, double epsilon = 0.0);
+double                   deltaEOK(const std::vector<double> &OK1, const std::vector<double> &OK2);
+double                   KS_func(double R);
+double                   KM_func(double KS);
+std::array<double, SIZE> parseSpectralReflectanceFromLRGB(const std::array<double, 3> &lRGB);
+std::array<int, 4>       parseCssColor(const std::string &str);
+
 class Color;
 Color gamutMap(const Color &color, double jnd = 0.03, double eps = 0.0001);
+
 
 class Color {
 public:
     // Public data
-    std::array<int, 3>  sRGB; // 0..255 (no alpha, ignoring alpha)
-    std::vector<double> lRGB; // linear RGB [0..1]
-    std::vector<double> R;    // spectral reflectance, size = SIZE
-    std::vector<double> XYZ;  // XYZ space
+    std::array<int, 3>       sRGB; // 0..255 (no alpha, ignoring alpha)
+    std::array<double, 3>    lRGB; // linear RGB [0..1]
+    std::array<double, 3>    XYZ;  // XYZ space
+    std::array<double, SIZE> R;    // spectral reflectance, size = SIZE
+
 
     // Tinting strength (default 1)
     double tintingStrength = 1.0;
 
 private:
     // Lazy-computed caches
-    mutable std::optional<std::vector<double>> _OKLab;
-    mutable std::optional<std::vector<double>> _OKLCh;
-    mutable std::optional<std::vector<double>> _KS;
-    mutable std::optional<double>              _luminance;
+    mutable std::optional<std::array<double, 3>>    _OKLab;
+    mutable std::optional<std::array<double, 3>>    _OKLCh;
+    mutable std::optional<std::array<double, SIZE>> _KS;
+    mutable std::optional<double>                   _luminance;
 
 public:
     // Constructors
@@ -252,31 +309,46 @@ public:
         R    = parseSpectralReflectanceFromLRGB(lRGB);
         XYZ  = lRGB_to_XYZ(lRGB);
     }
+    Color(const std::array<double, 3> &lrgb_) {
+        sRGB = lRGB_to_sRGB(lrgb_);
+        lRGB = lrgb_;
+        R    = parseSpectralReflectanceFromLRGB(lRGB);
+        XYZ  = lRGB_to_XYZ(lRGB);
+    }
 
     Color(const std::vector<double> &spectralR) {
         if ((int)spectralR.size() != SIZE) { throw std::invalid_argument("spectralR must have length SIZE"); }
+        for (size_t i = 0; auto &r_item : R) { r_item = spectralR[i++]; }
+        XYZ  = detail::mulMatVec(detail::CIE::CMF, R);
+        lRGB = XYZ_to_lRGB(XYZ);
+        sRGB = lRGB_to_sRGB(lRGB);
+    }
+    Color(const std::array<double, SIZE> &spectralR) {
+        if ((int)spectralR.size() != SIZE) { throw std::invalid_argument("spectralR must have length SIZE"); }
         R    = spectralR;
-        XYZ  = mulMatVec(CIE::CMF, R);
+        XYZ  = detail::mulMatVec(detail::CIE::CMF, R);
         lRGB = XYZ_to_lRGB(XYZ);
         sRGB = lRGB_to_sRGB(lRGB);
     }
 
-    const std::vector<double> &OKLab() const {
+
+    const std::array<double, 3> &OKLab() const {
         if (! _OKLab) { _OKLab = XYZ_to_OKLab(XYZ); }
         return *_OKLab;
     }
 
-    const std::vector<double> &OKLCh() const {
+    const std::array<double, 3> &OKLCh() const {
         if (! _OKLCh) { _OKLCh = OKLab_to_OKLCh(OKLab()); }
         return *_OKLCh;
     }
 
-    const std::vector<double> &KS() const {
+    const std::array<double, SIZE> &KS() const {
         if (! _KS) {
-            _KS = std::vector<double>(SIZE);
-            for (int i = 0; i < SIZE; ++i) { (*_KS)[i] = KS_func(R[i]); }
+            _KS           = std::array<double, SIZE>{};
+            auto &_KS_ref = _KS.value();
+            for (int i = 0; i < SIZE; ++i) { _KS_ref[i] = KS_func(R[i]); }
         }
-        return *_KS;
+        return _KS.value();
     }
 
     double luminance() const {
@@ -349,34 +421,32 @@ inline double compand(double x) {
     return x > 0.0031308 ? 1.055 * std::pow(x, 1.0 / GAMMA) - 0.055 : x * 12.92;
 }
 
-inline std::vector<double> sRGB_to_lRGB(const std::array<int, 3> &sRGB) {
-    std::vector<double> out(3);
-    for (int i = 0; i < 3; ++i) { out[i] = uncompand(sRGB[i] / 255.0); }
-    return out;
+inline std::array<double, 3> sRGB_to_lRGB(const std::array<int, 3> &sRGB) {
+    return {uncompand(sRGB[0] / 255.0), uncompand(sRGB[1] / 255.0), uncompand(sRGB[2] / 255.0)};
 }
 
-inline std::array<int, 3> lRGB_to_sRGB(const std::vector<double> &lRGB) {
+inline std::array<int, 3> lRGB_to_sRGB(const std::array<double, 3> &lRGB) {
     std::array<int, 3> out;
     for (int i = 0; i < 3; ++i) { out[i] = int(std::round(compand(lRGB[i]) * 255.0)); }
     return out;
 }
 
-inline std::vector<double> XYZ_to_lRGB(const std::vector<double> &XYZ) {
-    return mulMatVec(CONVERSION::XYZ_RGB, XYZ);
+inline std::array<double, 3> XYZ_to_lRGB(const std::array<double, 3> &XYZ) {
+    return detail::mulMatVec(detail::CONVERSION::XYZ_RGB, XYZ);
 }
 
-inline std::vector<double> lRGB_to_XYZ(const std::vector<double> &lRGB) {
-    return mulMatVec(CONVERSION::RGB_XYZ, lRGB);
+inline std::array<double, 3> lRGB_to_XYZ(const std::array<double, 3> &lRGB) {
+    return detail::mulMatVec(detail::CONVERSION::RGB_XYZ, lRGB);
 }
 
-inline bool inGamut(const std::vector<double> &lRGB, double epsilon) {
+inline bool inGamut(const std::array<double, 3> &lRGB, double epsilon) {
     for (double x : lRGB) {
         if (x < -epsilon || x > 1.0 + epsilon) { return false; }
     }
     return true;
 }
 
-inline double deltaEOK(const std::vector<double> &OK1, const std::vector<double> &OK2) {
+inline double deltaEOK(const std::array<double, 3> &OK1, const std::array<double, 3> &OK2) {
     if (OK1.size() != 3 || OK2.size() != 3) { throw std::invalid_argument("deltaEOK expects vectors of length 3"); }
     double d0 = OK1[0] - OK2[0];
     double d1 = OK1[1] - OK2[1];
@@ -388,14 +458,14 @@ inline double deltaEOK(const std::vector<double> &OK1, const std::vector<double>
 // Computes the Kubelka–Munk absorption/scattering parameter KS for a given spectral reflectance R.
 //
 // In Kubelka–Munk theory, the KS function reflects the ratio that controls the conversion from spectral
-// reflectance to an equivalent absorption/scattering coefficient. The formulation
+// reflectance to an equivalent absorption/scattering coeffidetail::CIEnt. The formulation
 // <code>(1 - R)² / (2 * R)</code> is a common approximation that assumes a diffusely scattering medium.
 inline double KS_func(double R) {
     return (1.0 - R) * (1.0 - R) / (2.0 * R);
 }
 
 
-// Computes the Kubelka–Munk mixing coefficient KM from a given KS value.
+// Computes the Kubelka–Munk mixing coeffidetail::CIEnt KM from a given KS value.
 //
 // The KM function transforms the KS parameter into a measure that can be linearly mixed.
 // This conversion is essential because the Kubelka–Munk model assumes that when pigments are
@@ -411,22 +481,22 @@ inline double KM_func(double KS) {
     return 1.0 + KS - std::sqrt(KS * KS + 2.0 * KS);
 }
 
-inline std::vector<double> XYZ_to_OKLab(const std::vector<double> &XYZ) {
+inline std::array<double, 3> XYZ_to_OKLab(const std::array<double, 3> &XYZ) {
     // lms = mat * XYZ
-    std::vector<double> lms = mulMatVec(CONVERSION::XYZ_LMS, XYZ);
+    std::array<double, 3> lms = detail::mulMatVec(detail::CONVERSION::XYZ_LMS, XYZ);
     for (double &v : lms) { v = std::cbrt(v); }
-    std::vector<double> lab = mulMatVec(CONVERSION::LMS_LAB, lms);
+    std::array<double, 3> lab = detail::mulMatVec(detail::CONVERSION::LMS_LAB, lms);
     return lab;
 }
 
-inline std::vector<double> OKLab_to_XYZ(const std::vector<double> &OKLab) {
-    std::vector<double> lms = mulMatVec(CONVERSION::LAB_LMS, OKLab);
+inline std::array<double, 3> OKLab_to_XYZ(const std::array<double, 3> &OKLab) {
+    std::array<double, 3> lms = detail::mulMatVec(detail::CONVERSION::LAB_LMS, OKLab);
     for (double &v : lms) { v = v * v * v; }
-    std::vector<double> XYZ = mulMatVec(CONVERSION::LMS_XYZ, lms);
+    std::array<double, 3> XYZ = detail::mulMatVec(detail::CONVERSION::LMS_XYZ, lms);
     return XYZ;
 }
 
-inline std::vector<double> OKLab_to_OKLCh(const std::vector<double> &OKLab) {
+inline std::array<double, 3> OKLab_to_OKLCh(const std::array<double, 3> &OKLab) {
     double L = OKLab[0];
     double a = OKLab[1];
     double b = OKLab[2];
@@ -436,7 +506,7 @@ inline std::vector<double> OKLab_to_OKLCh(const std::vector<double> &OKLab) {
     return {L, C, h};
 }
 
-inline std::vector<double> OKLCh_to_OKLab(const std::vector<double> &OKLCh) {
+inline std::array<double, 3> OKLCh_to_OKLab(const std::array<double, 3> &OKLCh) {
     double L = OKLCh[0];
     double C = OKLCh[1];
     double h = OKLCh[2];
@@ -457,15 +527,14 @@ inline Color gamutMap(const Color &color, double jnd, double eps) {
     double hi   = color.OKLCh()[1];
     bool   loIn = true;
 
-    std::vector<double> curLRGB = color.lRGB;
     // clipped = lRGB_to_OKLab( clamp each component )
-    std::vector<double> clippedOK =
-        XYZ_to_OKLab(lRGB_to_XYZ({clamp01(curLRGB[0]), clamp01(curLRGB[1]), clamp01(curLRGB[2])}));
-    double E = deltaEOK(clippedOK, XYZ_to_OKLab(lRGB_to_XYZ(curLRGB)));
+    std::array<double, 3> clippedOK =
+        XYZ_to_OKLab(lRGB_to_XYZ({clamp01(color.lRGB[0]), clamp01(color.lRGB[1]), clamp01(color.lRGB[2])}));
+    double E = deltaEOK(clippedOK, XYZ_to_OKLab(lRGB_to_XYZ(color.lRGB)));
     if (E < jnd) {
         // short-circuit
-        std::vector<double> tmpXYZ  = OKLab_to_XYZ(clippedOK);
-        std::vector<double> tmplRGB = XYZ_to_lRGB(tmpXYZ);
+        std::array<double, 3> tmpXYZ  = OKLab_to_XYZ(clippedOK);
+        std::array<double, 3> tmplRGB = XYZ_to_lRGB(tmpXYZ);
         return Color(tmplRGB);
     }
 
@@ -563,42 +632,6 @@ inline Color gradient(double t, const std::vector<std::pair<Color, double>> &sto
     return mix({{a.first, 1.0 - f}, {b.first, f}});
 }
 
-// multiply matrix * vector
-inline std::vector<double> mulMatVec(const std::vector<std::vector<double>> &M, const std::vector<double> &v) {
-    std::size_t         rows = M.size();
-    std::size_t         cols = v.size();
-    std::vector<double> out(rows, 0.0);
-    for (std::size_t i = 0; i < rows; ++i) {
-        double s = 0.0;
-        for (std::size_t j = 0; j < cols; ++j) { s += M[i][j] * v[j]; }
-        out[i] = s;
-    }
-    return out;
-}
-inline std::vector<double> mulMatVec(const std::array<std::array<double, 38>, 3> &M, const std::vector<double> &v) {
-    std::size_t         rows = M.size();
-    std::size_t         cols = v.size();
-    std::vector<double> out(rows, 0.0);
-    for (std::size_t i = 0; i < rows; ++i) {
-        double s = 0.0;
-        for (std::size_t j = 0; j < cols; ++j) { s += M[i][j] * v[j]; }
-        out[i] = s;
-    }
-    return out;
-}
-inline std::vector<double> mulMatVec(const std::array<std::array<double, 3>, 3> &M, const std::vector<double> &v) {
-    std::size_t         rows = M.size();
-    std::size_t         cols = v.size();
-    std::vector<double> out(rows, 0.0);
-    for (std::size_t i = 0; i < rows; ++i) {
-        double s = 0.0;
-        for (std::size_t j = 0; j < cols; ++j) { s += M[i][j] * v[j]; }
-        out[i] = s;
-    }
-    return out;
-}
-
-
 // CSS color parsing (#hex or rgb(...))
 inline std::array<int, 4> parseCssColor(const std::string &str) {
     if (str.empty()) { throw std::invalid_argument("Empty CSS color string"); }
@@ -652,30 +685,31 @@ inline std::array<int, 4> parseCssColor(const std::string &str) {
     else { throw std::invalid_argument("Unsupported CSS color format: " + str); }
 }
 
-// Convert spectral reflectance from lRGB via BASE_SPECTRA (the inverse of lRGB_to_R in JS)
-inline std::vector<double> parseSpectralReflectanceFromLRGB(const std::vector<double> &lRGB) {
+// Convert spectral reflectance from lRGB via detail::BASE_SPECTRA (the inverse of lRGB_to_R in JS)
+inline std::array<double, SIZE> parseSpectralReflectanceFromLRGB(const std::array<double, 3> &lRGB) {
     // This is the inverse of lRGB_to_R in your JS code.
-    // The JS code subtracts minimum w, c, m, y, r, g, b contributions using BASE_SPECTRA.
+    // The JS code subtracts minimum w, c, m, y, r, g, b contributions using detail::BASE_SPECTRA.
     // Re-implement here:
 
-    double              w = *std::min_element(lRGB.begin(), lRGB.end());
-    std::vector<double> v = lRGB;
-    for (double &x : v) { x -= w; }
+    static constexpr double eps = 1e-12;
 
-    double c = std::min(v[1], v[2]);
-    double m = std::min(v[0], v[2]);
-    double y = std::min(v[0], v[1]);
-    double r = std::max(0.0, std::min(v[0] - v[2], v[0] - v[1]));
-    double g = std::max(0.0, std::min(v[1] - v[2], v[1] - v[0]));
-    double b = std::max(0.0, std::min(v[2] - v[1], v[2] - v[0]));
+    double const          w   = std::min(std::min(lRGB[0], lRGB[1]), lRGB[2]);
+    std::array<double, 3> cpy = {lRGB[0] - w, lRGB[1] - w, lRGB[2] - w};
 
-    std::vector<double> R(SIZE);
+    double const c = std::min(cpy[1], cpy[2]);
+    double const m = std::min(cpy[0], cpy[2]);
+    double const y = std::min(cpy[0], cpy[1]);
+    double const r = std::max(0.0, std::min(cpy[0] - cpy[2], cpy[0] - cpy[1]));
+    double const g = std::max(0.0, std::min(cpy[1] - cpy[2], cpy[1] - cpy[0]));
+    double const b = std::max(0.0, std::min(cpy[2] - cpy[1], cpy[2] - cpy[0]));
+
+    std::array<double, SIZE> R{};
     for (int i = 0; i < SIZE; ++i) {
-        double val = w * BASE_SPECTRA::W[i] + c * BASE_SPECTRA::C[i] + m * BASE_SPECTRA::M[i] + y * BASE_SPECTRA::Y[i] +
-                     r * BASE_SPECTRA::R[i] + g * BASE_SPECTRA::G[i] + b * BASE_SPECTRA::B[i];
         // ensure at least epsilon
-        double eps = 1e-12;
-        R[i]       = (val > eps ? val : eps);
+        R[i] = std::max(eps, w * detail::BASE_SPECTRA::W[i] + c * detail::BASE_SPECTRA::C[i] +
+                                 m * detail::BASE_SPECTRA::M[i] + y * detail::BASE_SPECTRA::Y[i] +
+                                 r * detail::BASE_SPECTRA::R[i] + g * detail::BASE_SPECTRA::G[i] +
+                                 b * detail::BASE_SPECTRA::B[i]);
     }
     return R;
 }

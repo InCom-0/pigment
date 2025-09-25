@@ -1,4 +1,4 @@
-#include <pigment.hpp>
+#include <incom/pigment/pigment.hpp>
 
 #include <iostream>
 
