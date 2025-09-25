@@ -32,6 +32,8 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <tuple>
+#include <utility>
 #include <vector>
 
 namespace incom {
@@ -211,19 +213,35 @@ struct is_std_array<std::array<T, N>> : std::true_type {};
 template <typename T>
 inline constexpr bool is_std_array_v = is_std_array<T>::value;
 
+template <typename M, typename V>
+concept _is_matrix_and_range =
+    std::ranges::range<M> && std::ranges::range<std::ranges::range_value_t<M>> && std::ranges::range<V>;
 
 template <typename M, typename V>
-requires std::ranges::range<M> && std::ranges::range<std::ranges::range_value_t<M>> && std::ranges::range<V> &&
-         is_std_array_v<M>
+concept _is_matrixArray_and_range = _is_matrix_and_range<M, V> && is_std_array_v<M>;
+
+
+template <typename M, typename V>
+requires _is_matrixArray_and_range<M, V> && is_std_array_v<V>
 inline constexpr auto mulMatVec(M const &matrix, V const &vec) -> std::array<double, std::tuple_size<M>{}> {
-    std::size_t const                        rows = std::tuple_size<M>{};
-    std::size_t const                        cols = vec.size();
-    std::array<double, std::tuple_size<M>{}> out;
-    for (std::size_t i = 0; i < rows; ++i) {
-        out[i] = 0.0;
-        for (std::size_t j = 0; j < cols; ++j) { out[i] += matrix[i][j] * vec[j]; }
+    std::array<double, std::tuple_size<M>{}> res;
+    for (std::size_t i = 0; i < std::tuple_size<M>{}; ++i) {
+        res[i] = 0.0;
+        for (std::size_t j = 0; j < std::tuple_size<V>{}; ++j) { res[i] += matrix[i][j] * vec[j]; }
     }
-    return out;
+    return res;
+}
+
+template <typename M, typename V>
+requires _is_matrixArray_and_range<M, V>
+inline constexpr auto mulMatVec(M const &matrix, V const &vec) -> std::array<double, std::tuple_size<M>{}> {
+    std::size_t const                        cols = vec.size();
+    std::array<double, std::tuple_size<M>{}> res;
+    for (std::size_t i = 0; i < std::tuple_size<M>{}; ++i) {
+        res[i] = 0.0;
+        for (std::size_t j = 0; j < cols; ++j) { res[i] += matrix[i][j] * vec[j]; }
+    }
+    return res;
 }
 
 template <typename M, typename V>
@@ -231,12 +249,13 @@ requires std::ranges::range<M> && std::ranges::range<std::ranges::range_value_t<
 inline constexpr auto mulMatVec(M const &matrix, V const &vec) {
     std::size_t const   rows = matrix.size();
     std::size_t const   cols = vec.size();
-    std::vector<double> out(rows, 0.0);
+    std::vector<double> res(rows, 0.0);
     for (std::size_t i = 0; i < rows; ++i) {
-        for (std::size_t j = 0; j < cols; ++j) { out[i] += matrix[i][j] * vec[j]; }
+        for (std::size_t j = 0; j < cols; ++j) { res[i] += matrix[i][j] * vec[j]; }
     }
-    return out;
+    return res;
 }
+
 
 inline constexpr double clamp01(double x) {
     return (x < 0.0 ? 0.0 : (x > 1.0 ? 1.0 : x));
@@ -289,12 +308,19 @@ inline constexpr double KS_func(double R) {
 inline constexpr double KM_func(double KS) {
     return 1.0 + KS - std::sqrt(std::pow(KS, 2) + (2.0 * KS));
 }
+
 } // namespace detail
+
+
+// #######################################
+// ### MAIN LIBRARY INTERFACE PART    ####
+// #######################################
 
 // Converter is a uninstantiable 'static utility' class
 class Converter {
 public:
     static constexpr arr_dbl3 sRGB_to_lRGB(const arr_int3 &sRGB);
+    static constexpr arr_dbl3 sRGB_to_lRGB(const std::tuple<int, int, int> &sRGB);
     static constexpr arr_int3 lRGB_to_sRGB(const arr_dbl3 &lRGB);
     static constexpr arr_dbl3 XYZ_to_lRGB(const arr_dbl3 &XYZ);
     static constexpr arr_dbl3 lRGB_to_XYZ(const arr_dbl3 &lRGB);
@@ -305,6 +331,28 @@ public:
 
     static constexpr arr_dbl38          parseSpectralReflectanceFromLRGB(const arr_dbl3 &lRGB);
     static constexpr std::array<int, 4> parseCssColor(const std::string &str);
+
+    static constexpr double luminance_from_lRGB(const arr_dbl3 &lRBG) {
+        // Only the Y from the XYZ tupple needs to be computed for luminance
+        double Y = 0;
+        for (size_t i = 0; i < std::tuple_size<arr_dbl3>{}; ++i) { Y += detail::CONVERSION::RGB_XYZ[1][i] * lRBG[i]; }
+        return std::max(Y, detail::EPS_MIN);
+    }
+
+    static constexpr double luminance_from_sRGB(const arr_int3 &sRBG) {
+        return luminance_from_lRGB(sRGB_to_lRGB(sRBG));
+    }
+    static constexpr double luminance_from_sRGB(const std::tuple<int, int, int> &sRBG) {
+        return luminance_from_lRGB(sRGB_to_lRGB(sRBG));
+    }
+
+    static constexpr arr_dbl38 KS_from_lRGB(const arr_dbl3 &lRBG) {
+        // Variable used as both temp Reflectance storage AND return value (reflectance gets overwritten)
+        arr_dbl38 R_and_KS_res = parseSpectralReflectanceFromLRGB(lRBG);
+        for (int i = 0; i < detail::SAMPLE_SIZE; ++i) { R_and_KS_res[i] = detail::KS_func(R_and_KS_res[i]); }
+        return R_and_KS_res;
+    }
+
 
     Converter()                             = delete; // no default constructor
     Converter(const Converter &)            = delete; // no copy
@@ -368,9 +416,6 @@ public:
         _luminance = std::max(XYZ[1], detail::EPS_MIN);
     }
     Color(const arr_dbl38 &spectralR) {
-        if ((int)spectralR.size() != detail::SAMPLE_SIZE) {
-            throw std::invalid_argument("spectralR must have length SIZE");
-        }
         R          = spectralR;
         XYZ        = detail::mulMatVec(detail::CIE::CMF, R);
         lRGB       = Converter::XYZ_to_lRGB(XYZ);
@@ -434,6 +479,22 @@ public:
     constexpr std::string toString(const std::string &format = "hex", const std::string &method = "map") const;
 };
 
+constexpr std::tuple<double, double, double> mix_lRBG_f(
+    const std::vector<std::pair<std::tuple<double, double, double>, double>> &colors_srgb_f);
+
+constexpr std::tuple<int, int, int> mix_sRBG_f(
+    const std::vector<std::pair<std::tuple<int, int, int>, double>> &colors_srgb_f);
+
+constexpr std::tuple<int, int, int> mix_sRBG_f(const std::vector<std::tuple<int, int, int>> &colors_srgb);
+
+inline constexpr std::tuple<int, int, int> mix_sRBG_f(
+    const std::pair<std::tuple<int, int, int>, double> &color1_srgb_f,
+    const std::pair<std::tuple<int, int, int>, double> &color2_srgb_f);
+
+inline constexpr std::tuple<int, int, int> mix_sRBG_f(const std::tuple<int, int, int> &color1_srgb,
+                                                      const std::tuple<int, int, int> &color2_srgb,
+                                                      const double factor1 = 1.0, const double factor2 = 1.0);
+
 
 // ###############################
 // ### IMPLEMENTATION PART    ####
@@ -441,6 +502,10 @@ public:
 
 constexpr arr_dbl3 Converter::sRGB_to_lRGB(const arr_int3 &sRGB) {
     return {detail::uncompand(sRGB[0] / 255.0), detail::uncompand(sRGB[1] / 255.0), detail::uncompand(sRGB[2] / 255.0)};
+}
+constexpr arr_dbl3 Converter::sRGB_to_lRGB(const std::tuple<int, int, int> &sRGB) {
+    return {detail::uncompand(std::get<0>(sRGB) / 255.0), detail::uncompand(std::get<1>(sRGB) / 255.0),
+            detail::uncompand(std::get<2>(sRGB) / 255.0)};
 }
 constexpr arr_int3 Converter::lRGB_to_sRGB(const arr_dbl3 &lRGB) {
     return {int(std::round(detail::compand(lRGB[0]) * 255.0)), int(std::round(detail::compand(lRGB[1]) * 255.0)),
@@ -619,6 +684,7 @@ constexpr Color Color::mix(const std::vector<std::pair<Color, double>> &colors) 
     return Color(Rm);
 }
 
+
 // Generates a palette of colors transitioning between two colors.
 constexpr std::vector<Color> Color::palette(const Color &a, const Color &b, int sz) {
     std::vector<Color> out;
@@ -653,7 +719,6 @@ constexpr Color Color::gradient(double t, const std::vector<std::pair<Color, dou
     double f = (t - a.second) / (b.second - a.second);
     return mix({{a.first, 1.0 - f}, {b.first, f}});
 }
-
 
 constexpr Color Color::toGamut(const std::string &method) const {
     std::string m = method;
@@ -697,10 +762,90 @@ constexpr std::string Color::toString(const std::string &format, const std::stri
     else { throw std::invalid_argument("Unknown format in toString: " + format); }
 }
 
+inline constexpr std::tuple<double, double, double> mix_lRBG_f(const std::vector<std::pair<arr_dbl3, double>> &colors_srgb_f) {
+    std::vector<double> luminances;
+    luminances.reserve(colors_srgb_f.size());
+    for (size_t i = 0; i < colors_srgb_f.size(); ++i) {
+        luminances.push_back(Converter::luminance_from_lRGB(colors_srgb_f[i].first));
+    }
+
+    std::vector<arr_dbl38> KSs;
+    KSs.reserve(colors_srgb_f.size());
+    for (size_t i = 0; i < colors_srgb_f.size(); ++i) {
+        KSs.push_back(Converter::KS_from_lRGB(colors_srgb_f[i].first));
+    }
+
+    arr_dbl38 Rm{};
+    for (int i = 0; i < detail::SAMPLE_SIZE; ++i) {
+        double ksSum   = 0.0;
+        double concSum = 0.0;
+        for (size_t j = 0; j < colors_srgb_f.size(); ++j) {
+            double const conc  = std::pow(colors_srgb_f[j].second, 2) * luminances[j];
+            concSum           += conc;
+            ksSum             += KSs[j][i] * conc;
+        }
+        Rm[i] = detail::KM_func(ksSum / concSum);
+    }
+    Color cc(Rm);
+    return cc.lRGB;
+}
+
+inline constexpr std::tuple<int, int, int> mix_sRBG_f(
+    const std::vector<std::pair<std::tuple<int, int, int>, double>> &colors_srgb_f) {
+
+    std::vector<arr_dbl3> lRBGs;
+    lRBGs.reserve(colors_srgb_f.size());
+    for (size_t i = 0; i < colors_srgb_f.size(); ++i) {
+        lRBGs.push_back(Converter::sRGB_to_lRGB(colors_srgb_f[i].first));
+    }
+
+    std::vector<double> luminances;
+    luminances.reserve(colors_srgb_f.size());
+    for (size_t i = 0; i < colors_srgb_f.size(); ++i) {
+        luminances.push_back(Converter::luminance_from_lRGB(lRBGs[i]));
+    }
+
+    std::vector<arr_dbl38> KSs;
+    KSs.reserve(colors_srgb_f.size());
+    for (size_t i = 0; i < colors_srgb_f.size(); ++i) { KSs.push_back(Converter::KS_from_lRGB(lRBGs[i])); }
+
+    arr_dbl38 Rm{};
+    for (int i = 0; i < detail::SAMPLE_SIZE; ++i) {
+        double ksSum   = 0.0;
+        double concSum = 0.0;
+        for (size_t j = 0; j < colors_srgb_f.size(); ++j) {
+            double const conc  = std::pow(colors_srgb_f[j].second, 2) * luminances[j];
+            concSum           += conc;
+            ksSum             += KSs[j][i] * conc;
+        }
+        Rm[i] = detail::KM_func(ksSum / concSum);
+    }
+    Color cc(Rm);
+    return cc.sRGB;
+}
+
+inline constexpr std::tuple<int, int, int> mix_sRBG_f(const std::vector<std::tuple<int, int, int>> &colors_srgb) {
+    std::vector<std::pair<std::tuple<int, int, int>, double>> reformed;
+    for (auto const &colItem : colors_srgb) { reformed.push_back({colItem, 1}); }
+    return mix_sRBG_f(reformed);
+}
+
+inline constexpr std::tuple<int, int, int> mix_sRBG_f(
+    const std::pair<std::tuple<int, int, int>, double> &color1_srgb_f,
+    const std::pair<std::tuple<int, int, int>, double> &color2_srgb_f) {
+    return mix_sRBG_f({color1_srgb_f, color2_srgb_f});
+}
+
+inline constexpr std::tuple<int, int, int> mix_sRBG_f(const std::tuple<int, int, int> &color1_srgb,
+                                                      const std::tuple<int, int, int> &color2_srgb,
+                                                      const double factor1, const double factor2) {
+    return mix_sRBG_f({std::make_pair(color1_srgb, factor1), std::make_pair(color2_srgb, factor2)});
+};
+
 } // namespace pigment
 } // namespace incom
 
 #ifndef INCOM_INCPIG_NAMESPACE_ALIAS
 #define INCOM_INCPIG_NAMESPACE_ALIAS
-namespace incpig = incom::pigment;
+namespace incpigm = incom::pigment;
 #endif
