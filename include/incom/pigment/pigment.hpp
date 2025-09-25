@@ -36,15 +36,21 @@
 
 namespace incom {
 namespace pigment {
+namespace detail {
+inline constexpr int    SAMPLE_SIZE = 38;
+inline constexpr double GAMMA       = 2.4;
+inline constexpr double EPS_MIN     = 1e-12;
+} // namespace detail
 
-inline constexpr int    SIZE  = 38;
-inline constexpr double GAMMA = 2.4;
+using arr_dbl3  = std::array<double, 3>;
+using arr_int3  = std::array<int, 3>;
+using arr_dbl38 = std::array<double, detail::SAMPLE_SIZE>;
 
 namespace detail {
 // Definition of constant spectral data and conversion matrices
 // Contains arrays for various spectra (White, Cyan, Magenta, Yellow, Red, Green, Blue).
 namespace BASE_SPECTRA {
-inline constexpr std::array<double, SIZE> W = {
+inline constexpr arr_dbl38 W = {
     1.00116072718764,  1.00116065159728,  1.00116031922747,  1.00115867270789,  1.00115259844552,  1.00113252528998,
     1.00108500663327,  1.00099687889453,  1.00086525152274,  1.0006962900094,   1.00050496114888,  1.00030808187992,
     1.00011966602013,  0.999952765968407, 0.999821836899297, 0.999738609557593, 0.999709551639612, 0.999731930210627,
@@ -52,7 +58,7 @@ inline constexpr std::array<double, SIZE> W = {
     1.00042753780269,  1.00047623344888,  1.00050720967508,  1.00052519156373,  1.00053509606896,  1.00054022097482,
     1.00054272816784,  1.00054389569087,  1.00054448212151,  1.00054476959992,  1.00054489887762,  1.00054496254689,
     1.00054498927058,  1.000544996993};
-inline constexpr std::array<double, SIZE> C = {
+inline constexpr arr_dbl38 C = {
     0.970585001322962,  0.970592498143425,  0.970625348729891,  0.970786806119017,  0.971368673228248,
     0.973163230621252,  0.976740223158765,  0.981587605491377,  0.986280265652949,  0.989949147689134,
     0.99249270153842,   0.994145680405256,  0.995183975033212,  0.995756750110818,  0.99591281828671,
@@ -61,7 +67,7 @@ inline constexpr std::array<double, SIZE> C = {
     0.0222633920086335, 0.0182022841492439, 0.016299055973264,  0.0153656239334613, 0.0149111568733976,
     0.0146954339898235, 0.0145964146717719, 0.0145470156699655, 0.0145228771899495, 0.0145120341118965,
     0.0145066940939832, 0.0145044507314479, 0.0145038009464639};
-inline constexpr std::array<double, SIZE> M = {
+inline constexpr arr_dbl38 M = {
     0.990673557319988, 0.990671524961979,  0.990662582353421,  0.990618107644795,  0.99045148087871,
     0.989871081400204, 0.98828660875964,   0.984290692797504,  0.973934905625306,  0.941817838460145,
     0.817390326195156, 0.432472805065729,  0.13845397825887,   0.0537347216940033, 0.0292174996673231,
@@ -70,7 +76,7 @@ inline constexpr std::array<double, SIZE> M = {
     0.959927696331991, 0.966260595230312,  0.969325970058424,  0.970854536721399,  0.971605066528128,
     0.971962769757392, 0.972127272274509,  0.972209417745812,  0.972249577678424,  0.972267621998742,
     0.97227650946215,  0.972280243306874,  0.97228132482656};
-inline constexpr std::array<double, SIZE> Y = {
+inline constexpr arr_dbl38 Y = {
     0.0210523371789306, 0.0210564627517414, 0.0210746178695038, 0.0211649058448753, 0.0215027957272504,
     0.0226738799041561, 0.0258235649693629, 0.0334879385639851, 0.0519069663740307, 0.100749014833473,
     0.239129899706847,  0.534804312272748,  0.79780757864303,   0.911449894067384,  0.953797963004507,
@@ -79,7 +85,7 @@ inline constexpr std::array<double, SIZE> Y = {
     0.985176934765558,  0.984971574014181,  0.984846303415712,  0.984775351811199,  0.984738066625265,
     0.984719648311765,  0.984711023391939,  0.984706683300676,  0.984704554393091,  0.98470359630937,
     0.984703124077552,  0.98470292561509,   0.984702868122795};
-inline constexpr std::array<double, SIZE> R = {
+inline constexpr arr_dbl38 R = {
     0.0315605737777207, 0.0315520718330149, 0.0315148215513658, 0.0313318044982702, 0.0306729857725527,
     0.0286480476989607, 0.0246450407045709, 0.0192960753663651, 0.0142066612220556, 0.0102942608878609,
     0.0076191460521811, 0.005898041083542,  0.0048233247781713, 0.0042298748350633, 0.0040599171299341,
@@ -88,7 +94,7 @@ inline constexpr std::array<double, SIZE> R = {
     0.978030667473603,  0.982043643854306,  0.983923623718707,  0.984845484154382,  0.985294275814596,
     0.985507295219825,  0.985605071539837,  0.985653849933578,  0.985677685033883,  0.985688391806122,
     0.985693664690031,  0.985695879848205,  0.985696521463762};
-inline constexpr std::array<double, SIZE> G = {
+inline constexpr arr_dbl38 G = {
     0.0095560747554212, 0.0095581580120851, 0.0095673245444588, 0.0096129126297349, 0.0097837090401843,
     0.010378622705871,  0.0120026452378567, 0.0160977721473922, 0.026706190223168,  0.0595555440185881,
     0.186039826532826,  0.570579820116159,  0.861467768400292,  0.945879089767658,  0.970465486474305,
@@ -97,7 +103,7 @@ inline constexpr std::array<double, SIZE> G = {
     0.0406288447060719, 0.034221520431697,  0.0311185790956966, 0.0295708898336134, 0.0288108739348928,
     0.0284486271324597, 0.0282820301724731, 0.0281988376490237, 0.0281581655342037, 0.0281398910216386,
     0.0281308901665811, 0.0281271086805816, 0.0281260133612096};
-inline constexpr std::array<double, SIZE> B = {
+inline constexpr arr_dbl38 B = {
     0.979404752502014,  0.97940070684313,   0.979382903470261,  0.979294364945594,  0.97896301460857,
     0.977814466694043,  0.974724321133836,  0.967198482343973,  0.949079657530575,  0.900850128940977,
     0.76315044546224,   0.465922171649319,  0.201263280451005,  0.0877524413419623, 0.0457176793291679,
@@ -110,7 +116,7 @@ inline constexpr std::array<double, SIZE> B = {
 
 // detail::CIE Color Matching Functions weighted by D65 Standard Illuminant
 namespace CIE {
-inline constexpr std::array<std::array<double, 38>, 3> CMF = {
+inline constexpr std::array<arr_dbl38, 3> CMF = {
     {{0.0000646919989576, 0.0002194098998132, 0.0011205743509343, 0.0037666134117111, 0.011880553603799,
       0.0232864424191771, 0.0345594181969747, 0.0372237901162006, 0.0324183761091486, 0.021233205609381,
       0.0104909907685421, 0.0032958375797931, 0.0005070351633801, 0.0009486742057141, 0.0062737180998318,
@@ -173,44 +179,26 @@ inline constexpr std::array<std::array<double, 38>, 3> CMF = {
 // see https://github.com/color-js/color.js/blob/main/src/spaces/srgb-linear.js}
 // see https://github.com/color-js/color.js/blob/main/src/spaces/oklab.js}
 namespace CONVERSION {
-inline constexpr std::array<std::array<double, 3>, 3> RGB_XYZ = {
-    {{0.41239079926595934, 0.357584339383878, 0.1804807884018343},
-     {0.21263900587151027, 0.715168678767756, 0.07219231536073371},
-     {0.01933081871559182, 0.11919477979462598, 0.9505321522496607}}};
-inline constexpr std::array<std::array<double, 3>, 3> XYZ_RGB = {
-    {{3.2409699419045226, -1.537383177570094, -0.4986107602930034},
-     {-0.9692436362808796, 1.8759675015077202, 0.04155505740717559},
-     {0.05563007969699366, -0.20397695888897652, 1.0569715142428786}}};
-inline constexpr std::array<std::array<double, 3>, 3> XYZ_LMS = {
-    {{0.819022437996703, 0.3619062600528904, -0.1288737815209879},
-     {0.0329836539323885, 0.9292868615863434, 0.0361446663506424},
-     {0.0481771893596242, 0.2642395317527308, 0.6335478284694309}}};
-inline constexpr std::array<std::array<double, 3>, 3> LMS_XYZ = {
-    {{1.2268798758459243, -0.5578149944602171, 0.2813910456659647},
-     {-0.0405757452148008, 1.112286803280317, -0.0717110580655164},
-     {-0.0763729366746601, -0.4214933324022432, 1.5869240198367816}}};
-inline constexpr std::array<std::array<double, 3>, 3> LMS_LAB = {
-    {{0.210454268309314, 0.7936177747023054, -0.0040720430116193},
-     {1.9779985324311684, -2.4285922420485799, 0.450593709617411},
-     {0.0259040424655478, 0.7827717124575296, -0.8086757549230774}}};
-inline constexpr std::array<std::array<double, 3>, 3> LAB_LMS = {{{1.0, 0.3963377773761749, 0.2158037573099136},
-                                                                  {1.0, -0.1055613458156586, -0.0638541728258133},
-                                                                  {1.0, -0.0894841775298119, -1.2914855480194092}}};
+inline constexpr std::array<arr_dbl3, 3> RGB_XYZ = {{{0.41239079926595934, 0.357584339383878, 0.1804807884018343},
+                                                     {0.21263900587151027, 0.715168678767756, 0.07219231536073371},
+                                                     {0.01933081871559182, 0.11919477979462598, 0.9505321522496607}}};
+inline constexpr std::array<arr_dbl3, 3> XYZ_RGB = {{{3.2409699419045226, -1.537383177570094, -0.4986107602930034},
+                                                     {-0.9692436362808796, 1.8759675015077202, 0.04155505740717559},
+                                                     {0.05563007969699366, -0.20397695888897652, 1.0569715142428786}}};
+inline constexpr std::array<arr_dbl3, 3> XYZ_LMS = {{{0.819022437996703, 0.3619062600528904, -0.1288737815209879},
+                                                     {0.0329836539323885, 0.9292868615863434, 0.0361446663506424},
+                                                     {0.0481771893596242, 0.2642395317527308, 0.6335478284694309}}};
+inline constexpr std::array<arr_dbl3, 3> LMS_XYZ = {{{1.2268798758459243, -0.5578149944602171, 0.2813910456659647},
+                                                     {-0.0405757452148008, 1.112286803280317, -0.0717110580655164},
+                                                     {-0.0763729366746601, -0.4214933324022432, 1.5869240198367816}}};
+inline constexpr std::array<arr_dbl3, 3> LMS_LAB = {{{0.210454268309314, 0.7936177747023054, -0.0040720430116193},
+                                                     {1.9779985324311684, -2.4285922420485799, 0.450593709617411},
+                                                     {0.0259040424655478, 0.7827717124575296, -0.8086757549230774}}};
+inline constexpr std::array<arr_dbl3, 3> LAB_LMS = {{{1.0, 0.3963377773761749, 0.2158037573099136},
+                                                     {1.0, -0.1055613458156586, -0.0638541728258133},
+                                                     {1.0, -0.0894841775298119, -1.2914855480194092}}};
 } // namespace CONVERSION
-} // namespace detail
 
-struct Converter {
-    static constexpr std::array<double, 3> sRGB_to_lRGB(const std::array<int, 3> &sRGB);
-    static constexpr std::array<int, 3>    lRGB_to_sRGB(const std::vector<double> &lRGB);
-    static constexpr std::vector<double>   XYZ_to_lRGB(const std::vector<double> &XYZ);
-    static constexpr std::vector<double>   lRGB_to_XYZ(const std::vector<double> &lRGB);
-    static constexpr std::vector<double>   XYZ_to_OKLab(const std::vector<double> &XYZ);
-    static constexpr std::vector<double>   OKLab_to_XYZ(const std::vector<double> &OKLab);
-    static constexpr std::vector<double>   OKLab_to_OKLCh(const std::vector<double> &OKLab);
-    static constexpr std::vector<double>   OKLCh_to_OKLab(const std::vector<double> &OKLCh);
-};
-
-namespace detail {
 // Primary template: defaults to false
 template <typename T>
 struct is_std_array : std::false_type {};
@@ -227,7 +215,7 @@ inline constexpr bool is_std_array_v = is_std_array<T>::value;
 template <typename M, typename V>
 requires std::ranges::range<M> && std::ranges::range<std::ranges::range_value_t<M>> && std::ranges::range<V> &&
          is_std_array_v<M>
-auto mulMatVec(M const &matrix, V const &vec) -> std::array<double, std::tuple_size<M>{}> {
+inline constexpr auto mulMatVec(M const &matrix, V const &vec) -> std::array<double, std::tuple_size<M>{}> {
     std::size_t const                        rows = std::tuple_size<M>{};
     std::size_t const                        cols = vec.size();
     std::array<double, std::tuple_size<M>{}> out;
@@ -240,7 +228,7 @@ auto mulMatVec(M const &matrix, V const &vec) -> std::array<double, std::tuple_s
 
 template <typename M, typename V>
 requires std::ranges::range<M> && std::ranges::range<std::ranges::range_value_t<M>> && std::ranges::range<V>
-auto mulMatVec(M const &matrix, V const &vec) {
+inline constexpr auto mulMatVec(M const &matrix, V const &vec) {
     std::size_t const   rows = matrix.size();
     std::size_t const   cols = vec.size();
     std::vector<double> out(rows, 0.0);
@@ -250,203 +238,26 @@ auto mulMatVec(M const &matrix, V const &vec) {
     return out;
 }
 
-} // namespace detail
-
-// Forward declarations of free functions
-std::array<double, 3> sRGB_to_lRGB(const std::array<int, 3> &sRGB);
-std::array<int, 3>    lRGB_to_sRGB(const std::array<double, 3> &lRGB);
-std::array<double, 3> XYZ_to_lRGB(const std::array<double, 3> &XYZ);
-std::array<double, 3> lRGB_to_XYZ(const std::array<double, 3> &lRGB);
-std::array<double, 3> XYZ_to_OKLab(const std::array<double, 3> &XYZ);
-std::array<double, 3> OKLab_to_XYZ(const std::array<double, 3> &OKLab);
-std::array<double, 3> OKLab_to_OKLCh(const std::array<double, 3> &OKLab);
-std::array<double, 3> OKLCh_to_OKLab(const std::array<double, 3> &OKLCh);
-
-
-bool                     inGamut(const std::array<double, 3> &lRGB, double epsilon = 0.0);
-double                   deltaEOK(const std::vector<double> &OK1, const std::vector<double> &OK2);
-double                   KS_func(double R);
-double                   KM_func(double KS);
-std::array<double, SIZE> parseSpectralReflectanceFromLRGB(const std::array<double, 3> &lRGB);
-std::array<int, 4>       parseCssColor(const std::string &str);
-
-class Color;
-Color gamutMap(const Color &color, double jnd = 0.03, double eps = 0.0001);
-
-
-class Color {
-public:
-    // Public data
-    std::array<int, 3>       sRGB; // 0..255 (no alpha, ignoring alpha)
-    std::array<double, 3>    lRGB; // linear RGB [0..1]
-    std::array<double, 3>    XYZ;  // XYZ space
-    std::array<double, SIZE> R;    // spectral reflectance, size = SIZE
-
-
-    // Tinting strength (default 1)
-    double tintingStrength = 1.0;
-
-private:
-    // Lazy-computed caches
-    mutable std::optional<std::array<double, 3>>    _OKLab;
-    mutable std::optional<std::array<double, 3>>    _OKLCh;
-    mutable std::optional<std::array<double, SIZE>> _KS;
-    mutable std::optional<double>                   _luminance;
-
-public:
-    // Constructors
-    Color(const std::string &css) {
-        auto c = parseCssColor(css);
-        sRGB   = {c[0], c[1], c[2]};
-        lRGB   = sRGB_to_lRGB(sRGB);
-        R      = parseSpectralReflectanceFromLRGB(lRGB);
-        XYZ    = lRGB_to_XYZ(lRGB);
-    }
-
-    Color(const std::array<int, 3> &srgb_) {
-        sRGB = srgb_;
-        lRGB = sRGB_to_lRGB(sRGB);
-        R    = parseSpectralReflectanceFromLRGB(lRGB);
-        XYZ  = lRGB_to_XYZ(lRGB);
-    }
-    Color(const std::array<double, 3> &lrgb_) {
-        sRGB = lRGB_to_sRGB(lrgb_);
-        lRGB = lrgb_;
-        R    = parseSpectralReflectanceFromLRGB(lRGB);
-        XYZ  = lRGB_to_XYZ(lRGB);
-    }
-
-    Color(const std::vector<double> &spectralR) {
-        if ((int)spectralR.size() != SIZE) { throw std::invalid_argument("spectralR must have length SIZE"); }
-        for (size_t i = 0; auto &r_item : R) { r_item = spectralR[i++]; }
-        XYZ  = detail::mulMatVec(detail::CIE::CMF, R);
-        lRGB = XYZ_to_lRGB(XYZ);
-        sRGB = lRGB_to_sRGB(lRGB);
-    }
-    Color(const std::array<double, SIZE> &spectralR) {
-        if ((int)spectralR.size() != SIZE) { throw std::invalid_argument("spectralR must have length SIZE"); }
-        R    = spectralR;
-        XYZ  = detail::mulMatVec(detail::CIE::CMF, R);
-        lRGB = XYZ_to_lRGB(XYZ);
-        sRGB = lRGB_to_sRGB(lRGB);
-    }
-
-
-    const std::array<double, 3> &OKLab() const {
-        if (! _OKLab) { _OKLab = XYZ_to_OKLab(XYZ); }
-        return *_OKLab;
-    }
-
-    const std::array<double, 3> &OKLCh() const {
-        if (! _OKLCh) { _OKLCh = OKLab_to_OKLCh(OKLab()); }
-        return *_OKLCh;
-    }
-
-    const std::array<double, SIZE> &KS() const {
-        if (! _KS) {
-            _KS           = std::array<double, SIZE>{};
-            auto &_KS_ref = _KS.value();
-            for (int i = 0; i < SIZE; ++i) { _KS_ref[i] = KS_func(R[i]); }
-        }
-        return _KS.value();
-    }
-
-    double luminance() const {
-        if (! _luminance) {
-            double           y   = XYZ[1];
-            constexpr double eps = 1e-12;
-            _luminance           = (y > eps ? y : eps);
-        }
-        return *_luminance;
-    }
-
-    bool inGamut(double epsilon = 0.0) const { return pigment::inGamut(lRGB, epsilon); }
-
-    Color toGamut(const std::string &method = "map") const {
-        std::string m = method;
-        std::transform(m.begin(), m.end(), m.begin(), ::tolower);
-        if (m == "clip") {
-            std::array<int, 3> clipped;
-            for (int i = 0; i < 3; ++i) { clipped[i] = int(std::round(std::clamp(sRGB[i], 0, 255))); }
-            return Color(clipped);
-        }
-        else if (m == "map") { return gamutMap(*this); }
-        else { throw std::invalid_argument("Unknown gamut mapping method: " + method); }
-    }
-
-    std::string toString(const std::string &format = "hex", const std::string &method = "map") const {
-        std::vector<int> outRGB(3);
-        if (! inGamut()) {
-            std::string m = method;
-            std::transform(m.begin(), m.end(), m.begin(), ::tolower);
-            if (m == "clip") {
-                for (int i = 0; i < 3; ++i) { outRGB[i] = int(std::round(std::clamp(sRGB[i], 0, 255))); }
-            }
-            else if (m == "map") {
-                Color mapped = gamutMap(*this);
-                outRGB       = {mapped.sRGB[0], mapped.sRGB[1], mapped.sRGB[2]};
-            }
-            else { throw std::invalid_argument("Unknown method in toString: " + method); }
-        }
-        else { outRGB = {sRGB[0], sRGB[1], sRGB[2]}; }
-
-        if (format == "hex" || format == "HEX" || format == "Hex") {
-            std::ostringstream oss;
-            oss << "#";
-            for (int c : outRGB) {
-                oss << std::uppercase << std::hex << std::setw(2) << std::setfill('0') << (c & 0xFF);
-            }
-            return oss.str();
-        }
-        else if (format == "rgb" || format == "RGB") {
-            std::ostringstream oss;
-            oss << "rgb(" << outRGB[0] << "," << outRGB[1] << "," << outRGB[2] << ")";
-            return oss.str();
-        }
-        else { throw std::invalid_argument("Unknown format in toString: " + format); }
-    }
-};
-
-// Free functions & helpers
-
-inline double clamp01(double x) {
+inline constexpr double clamp01(double x) {
     return (x < 0.0 ? 0.0 : (x > 1.0 ? 1.0 : x));
 }
 
-inline double uncompand(double x) {
-    return x > 0.04045 ? std::pow((x + 0.055) / 1.055, GAMMA) : x / 12.92;
+inline constexpr double uncompand(double x) {
+    return x > 0.04045 ? std::pow((x + 0.055) / 1.055, detail::GAMMA) : x / 12.92;
 }
 
-inline double compand(double x) {
-    return x > 0.0031308 ? 1.055 * std::pow(x, 1.0 / GAMMA) - 0.055 : x * 12.92;
+inline constexpr double compand(double x) {
+    return x > 0.0031308 ? 1.055 * std::pow(x, 1.0 / detail::GAMMA) - 0.055 : x * 12.92;
 }
 
-inline std::array<double, 3> sRGB_to_lRGB(const std::array<int, 3> &sRGB) {
-    return {uncompand(sRGB[0] / 255.0), uncompand(sRGB[1] / 255.0), uncompand(sRGB[2] / 255.0)};
-}
-
-inline std::array<int, 3> lRGB_to_sRGB(const std::array<double, 3> &lRGB) {
-    std::array<int, 3> out;
-    for (int i = 0; i < 3; ++i) { out[i] = int(std::round(compand(lRGB[i]) * 255.0)); }
-    return out;
-}
-
-inline std::array<double, 3> XYZ_to_lRGB(const std::array<double, 3> &XYZ) {
-    return detail::mulMatVec(detail::CONVERSION::XYZ_RGB, XYZ);
-}
-
-inline std::array<double, 3> lRGB_to_XYZ(const std::array<double, 3> &lRGB) {
-    return detail::mulMatVec(detail::CONVERSION::RGB_XYZ, lRGB);
-}
-
-inline bool inGamut(const std::array<double, 3> &lRGB, double epsilon) {
+inline constexpr bool inGamut(const arr_dbl3 &lRGB, double epsilon = 0.0) {
     for (double x : lRGB) {
         if (x < -epsilon || x > 1.0 + epsilon) { return false; }
     }
     return true;
 }
 
-inline double deltaEOK(const std::array<double, 3> &OK1, const std::array<double, 3> &OK2) {
+inline constexpr double deltaEOK(const arr_dbl3 &OK1, const arr_dbl3 &OK2) {
     if (OK1.size() != 3 || OK2.size() != 3) { throw std::invalid_argument("deltaEOK expects vectors of length 3"); }
     double d0 = OK1[0] - OK2[0];
     double d1 = OK1[1] - OK2[1];
@@ -454,16 +265,14 @@ inline double deltaEOK(const std::array<double, 3> &OK1, const std::array<double
     return std::sqrt(d0 * d0 + d1 * d1 + d2 * d2);
 }
 
-
 // Computes the Kubelka–Munk absorption/scattering parameter KS for a given spectral reflectance R.
 //
 // In Kubelka–Munk theory, the KS function reflects the ratio that controls the conversion from spectral
 // reflectance to an equivalent absorption/scattering coeffidetail::CIEnt. The formulation
 // <code>(1 - R)² / (2 * R)</code> is a common approximation that assumes a diffusely scattering medium.
-inline double KS_func(double R) {
+inline constexpr double KS_func(double R) {
     return (1.0 - R) * (1.0 - R) / (2.0 * R);
 }
-
 
 // Computes the Kubelka–Munk mixing coeffidetail::CIEnt KM from a given KS value.
 //
@@ -477,163 +286,222 @@ inline double KS_func(double R) {
 // </pre>
 //
 // provides the appropriate transformation for blending multiple pigment spectra.
-inline double KM_func(double KS) {
-    return 1.0 + KS - std::sqrt(KS * KS + 2.0 * KS);
+inline constexpr double KM_func(double KS) {
+    return 1.0 + KS - std::sqrt(std::pow(KS, 2) + (2.0 * KS));
 }
+} // namespace detail
 
-inline std::array<double, 3> XYZ_to_OKLab(const std::array<double, 3> &XYZ) {
+// Converter is a uninstantiable 'static utility' class
+class Converter {
+public:
+    static constexpr arr_dbl3 sRGB_to_lRGB(const arr_int3 &sRGB);
+    static constexpr arr_int3 lRGB_to_sRGB(const arr_dbl3 &lRGB);
+    static constexpr arr_dbl3 XYZ_to_lRGB(const arr_dbl3 &XYZ);
+    static constexpr arr_dbl3 lRGB_to_XYZ(const arr_dbl3 &lRGB);
+    static constexpr arr_dbl3 XYZ_to_OKLab(const arr_dbl3 &XYZ);
+    static constexpr arr_dbl3 OKLab_to_XYZ(const arr_dbl3 &OKLab);
+    static constexpr arr_dbl3 OKLab_to_OKLCh(const arr_dbl3 &OKLab);
+    static constexpr arr_dbl3 OKLCh_to_OKLab(const arr_dbl3 &OKLCh);
+
+    static constexpr arr_dbl38          parseSpectralReflectanceFromLRGB(const arr_dbl3 &lRGB);
+    static constexpr std::array<int, 4> parseCssColor(const std::string &str);
+
+    Converter()                             = delete; // no default constructor
+    Converter(const Converter &)            = delete; // no copy
+    Converter &operator=(const Converter &) = delete; // no assignment
+    ~Converter()                            = delete; // no destructor
+    void *operator new(std::size_t)         = delete; // no heap
+    void *operator new[](std::size_t)       = delete; // no heap array
+    void *operator new(std::size_t, void *) = delete; // blocked placement-new
+};
+
+class Color {
+public:
+    // Public data
+    arr_int3  sRGB; // 0..255 (no alpha, ignoring alpha)
+    arr_dbl3  lRGB; // linear RGB [0..1]
+    arr_dbl3  XYZ;  // XYZ space
+    arr_dbl38 R;    // spectral reflectance, size = SIZE
+
+    // Tinting strength (default 1)
+    double tintingStrength = 1.0;
+    double _luminance      = 0.0;
+
+private:
+    // Lazy-computed caches
+    mutable std::optional<arr_dbl3>  _OKLab;
+    mutable std::optional<arr_dbl3>  _OKLCh;
+    mutable std::optional<arr_dbl38> _KS;
+
+public:
+    // Constructors
+    Color(const std::string &css) {
+        auto c     = Converter::parseCssColor(css);
+        sRGB       = {c[0], c[1], c[2]};
+        lRGB       = Converter::sRGB_to_lRGB(sRGB);
+        R          = Converter::parseSpectralReflectanceFromLRGB(lRGB);
+        XYZ        = Converter::lRGB_to_XYZ(lRGB);
+        _luminance = std::max(XYZ[1], detail::EPS_MIN);
+    }
+    Color(const arr_int3 &srgb_) {
+        sRGB       = srgb_;
+        lRGB       = Converter::sRGB_to_lRGB(sRGB);
+        R          = Converter::parseSpectralReflectanceFromLRGB(lRGB);
+        XYZ        = Converter::lRGB_to_XYZ(lRGB);
+        _luminance = std::max(XYZ[1], detail::EPS_MIN);
+    }
+    Color(const arr_dbl3 &lrgb_) {
+        sRGB       = Converter::lRGB_to_sRGB(lrgb_);
+        lRGB       = lrgb_;
+        R          = Converter::parseSpectralReflectanceFromLRGB(lRGB);
+        XYZ        = Converter::lRGB_to_XYZ(lRGB);
+        _luminance = std::max(XYZ[1], detail::EPS_MIN);
+    }
+    Color(const std::vector<double> &spectralR) {
+        if ((int)spectralR.size() != detail::SAMPLE_SIZE) {
+            throw std::invalid_argument("spectralR must have length SIZE");
+        }
+        for (size_t i = 0; auto &r_item : R) { r_item = spectralR[i++]; }
+        XYZ        = detail::mulMatVec(detail::CIE::CMF, R);
+        lRGB       = Converter::XYZ_to_lRGB(XYZ);
+        sRGB       = Converter::lRGB_to_sRGB(lRGB);
+        _luminance = std::max(XYZ[1], detail::EPS_MIN);
+    }
+    Color(const arr_dbl38 &spectralR) {
+        if ((int)spectralR.size() != detail::SAMPLE_SIZE) {
+            throw std::invalid_argument("spectralR must have length SIZE");
+        }
+        R          = spectralR;
+        XYZ        = detail::mulMatVec(detail::CIE::CMF, R);
+        lRGB       = Converter::XYZ_to_lRGB(XYZ);
+        sRGB       = Converter::lRGB_to_sRGB(lRGB);
+        _luminance = std::max(XYZ[1], detail::EPS_MIN);
+    }
+
+    // Getters
+    const arr_dbl3 &OKLab() const {
+        if (! _OKLab) { _OKLab = Converter::XYZ_to_OKLab(XYZ); }
+        return *_OKLab;
+    }
+    const arr_dbl3 &OKLCh() const {
+        if (! _OKLCh) { _OKLCh = Converter::OKLab_to_OKLCh(OKLab()); }
+        return *_OKLCh;
+    }
+    const arr_dbl38 &KS() const {
+        if (! _KS) {
+            _KS           = arr_dbl38{};
+            auto &_KS_ref = _KS.value();
+            for (int i = 0; i < detail::SAMPLE_SIZE; ++i) { _KS_ref[i] = detail::KS_func(R[i]); }
+        }
+        return _KS.value();
+    }
+
+    double luminance() const { return _luminance; }
+
+    // Methods
+private:
+    // gamutMap (binary search of chroma)
+    static constexpr Color gamutMap(const Color &color, double jnd = 0.03, double eps = 0.0001);
+
+public:
+    // Mixes multiple colors using a model based on the Kubelka–Munk theory.
+    //
+    // This function implements a mixing algorithm that is inspired by the Kubelka–Munk theory,
+    // which models how light interacts with diffusely scattering and absorbing layers (such as pigments or paints).
+    // The approach is as follows:
+    //
+    // - For each wavelength band (with SIZE samples), compute a weighted average of the KS values.
+    // - Weights are determined by the square of a factor that considers both the square-root of the color's
+    //   luminance and its tinting strength multiplied by a user-specified factor.
+    // - The resulting weighted KS average is then converted back using the KM function to obtain the
+    //   mixed spectral reflectance.
+    //
+    // In effect, this method blends pigments based on their optical absorption and scattering properties,
+    // providing a physically motivated approximation for pigment mixing as described by Kubelka–Munk.
+    //
+    // Each argument should be provided as an array of two elements: [Color, factor]. The factor determines
+    // the influence of that particular color in the overall mix (simple weight)
+    static constexpr Color mix(const std::vector<std::pair<Color, double>> &colors);
+
+    // Generates a palette of colors transitioning between two colors.
+    static constexpr std::vector<Color> palette(const Color &a, const Color &b, int sz);
+
+    // Interpolates between multiple colors based on a parameter t.
+    // Each additional argument should be an array with two elements: [Color, position].
+    static constexpr Color gradient(double t, const std::vector<std::pair<Color, double>> &stops);
+
+    constexpr Color       toGamut(const std::string &method = "map") const;
+    constexpr std::string toString(const std::string &format = "hex", const std::string &method = "map") const;
+};
+
+
+// ###############################
+// ### IMPLEMENTATION PART    ####
+// ###############################
+
+constexpr arr_dbl3 Converter::sRGB_to_lRGB(const arr_int3 &sRGB) {
+    return {detail::uncompand(sRGB[0] / 255.0), detail::uncompand(sRGB[1] / 255.0), detail::uncompand(sRGB[2] / 255.0)};
+}
+constexpr arr_int3 Converter::lRGB_to_sRGB(const arr_dbl3 &lRGB) {
+    return {int(std::round(detail::compand(lRGB[0]) * 255.0)), int(std::round(detail::compand(lRGB[1]) * 255.0)),
+            int(std::round(detail::compand(lRGB[2]) * 255.0))};
+}
+constexpr arr_dbl3 Converter::XYZ_to_lRGB(const arr_dbl3 &XYZ) {
+    return detail::mulMatVec(detail::CONVERSION::XYZ_RGB, XYZ);
+}
+constexpr arr_dbl3 Converter::lRGB_to_XYZ(const arr_dbl3 &lRGB) {
+    return detail::mulMatVec(detail::CONVERSION::RGB_XYZ, lRGB);
+}
+constexpr arr_dbl3 Converter::XYZ_to_OKLab(const arr_dbl3 &XYZ) {
     // lms = mat * XYZ
-    std::array<double, 3> lms = detail::mulMatVec(detail::CONVERSION::XYZ_LMS, XYZ);
+    arr_dbl3 lms = detail::mulMatVec(detail::CONVERSION::XYZ_LMS, XYZ);
     for (double &v : lms) { v = std::cbrt(v); }
-    std::array<double, 3> lab = detail::mulMatVec(detail::CONVERSION::LMS_LAB, lms);
+    arr_dbl3 lab = detail::mulMatVec(detail::CONVERSION::LMS_LAB, lms);
     return lab;
 }
-
-inline std::array<double, 3> OKLab_to_XYZ(const std::array<double, 3> &OKLab) {
-    std::array<double, 3> lms = detail::mulMatVec(detail::CONVERSION::LAB_LMS, OKLab);
+constexpr arr_dbl3 Converter::OKLab_to_XYZ(const arr_dbl3 &OKLab) {
+    arr_dbl3 lms = detail::mulMatVec(detail::CONVERSION::LAB_LMS, OKLab);
     for (double &v : lms) { v = v * v * v; }
-    std::array<double, 3> XYZ = detail::mulMatVec(detail::CONVERSION::LMS_XYZ, lms);
+    arr_dbl3 XYZ = detail::mulMatVec(detail::CONVERSION::LMS_XYZ, lms);
     return XYZ;
 }
-
-inline std::array<double, 3> OKLab_to_OKLCh(const std::array<double, 3> &OKLab) {
-    double L = OKLab[0];
-    double a = OKLab[1];
-    double b = OKLab[2];
-    double C = std::sqrt(a * a + b * b);
-    double h = std::atan2(b, a) * 180.0 / M_PI;
+constexpr arr_dbl3 Converter::OKLab_to_OKLCh(const arr_dbl3 &OKLab) {
+    double h = std::atan2(OKLab[2], OKLab[1]) * 180.0 / M_PI;
     if (h < 0.0) { h += 360.0; }
-    return {L, C, h};
+    return {OKLab[0], std::sqrt(std::pow(OKLab[1], 2) + std::pow(OKLab[2], 2)), h};
+}
+constexpr arr_dbl3 Converter::OKLCh_to_OKLab(const arr_dbl3 &OKLCh) {
+    return {OKLCh[0], OKLCh[1] * std::cos(OKLCh[2] * M_PI / 180.0), OKLCh[1] * std::sin(OKLCh[2] * M_PI / 180.0)};
 }
 
-inline std::array<double, 3> OKLCh_to_OKLab(const std::array<double, 3> &OKLCh) {
-    double L = OKLCh[0];
-    double C = OKLCh[1];
-    double h = OKLCh[2];
-    double a = C * std::cos(h * M_PI / 180.0);
-    double b = C * std::sin(h * M_PI / 180.0);
-    return {L, a, b};
-}
 
-// gamutMap (binary search of chroma)
-inline Color gamutMap(const Color &color, double jnd, double eps) {
-    double L = color.OKLCh()[0];
-    if (L >= 1.0) { return Color(std::array<int, 3>{255, 255, 255}); }
-    if (L <= 0.0) { return Color(std::array<int, 3>{0, 0, 0}); }
-    if (color.inGamut()) { return color; }
+constexpr arr_dbl38 Converter::parseSpectralReflectanceFromLRGB(const arr_dbl3 &lRGB) {
+    // This is the inverse of lRGB_to_R
+    // The code subtracts minimum w, c, m, y, r, g, b contributions using detail::BASE_SPECTRA.
 
-    double h    = color.OKLCh()[2];
-    double lo   = 0.0;
-    double hi   = color.OKLCh()[1];
-    bool   loIn = true;
+    double const w   = std::min(std::min(lRGB[0], lRGB[1]), lRGB[2]);
+    arr_dbl3     cpy = {lRGB[0] - w, lRGB[1] - w, lRGB[2] - w};
 
-    // clipped = lRGB_to_OKLab( clamp each component )
-    std::array<double, 3> clippedOK =
-        XYZ_to_OKLab(lRGB_to_XYZ({clamp01(color.lRGB[0]), clamp01(color.lRGB[1]), clamp01(color.lRGB[2])}));
-    double E = deltaEOK(clippedOK, XYZ_to_OKLab(lRGB_to_XYZ(color.lRGB)));
-    if (E < jnd) {
-        // short-circuit
-        std::array<double, 3> tmpXYZ  = OKLab_to_XYZ(clippedOK);
-        std::array<double, 3> tmplRGB = XYZ_to_lRGB(tmpXYZ);
-        return Color(tmplRGB);
+    double const c = std::min(cpy[1], cpy[2]);
+    double const m = std::min(cpy[0], cpy[2]);
+    double const y = std::min(cpy[0], cpy[1]);
+    double const r = std::max(0.0, std::min(cpy[0] - cpy[2], cpy[0] - cpy[1]));
+    double const g = std::max(0.0, std::min(cpy[1] - cpy[2], cpy[1] - cpy[0]));
+    double const b = std::max(0.0, std::min(cpy[2] - cpy[1], cpy[2] - cpy[0]));
+
+    arr_dbl38 R{};
+    for (int i = 0; i < detail::SAMPLE_SIZE; ++i) {
+        // ensure at least epsilon
+        R[i] = std::max(detail::EPS_MIN, w * detail::BASE_SPECTRA::W[i] + c * detail::BASE_SPECTRA::C[i] +
+                                             m * detail::BASE_SPECTRA::M[i] + y * detail::BASE_SPECTRA::Y[i] +
+                                             r * detail::BASE_SPECTRA::R[i] + g * detail::BASE_SPECTRA::G[i] +
+                                             b * detail::BASE_SPECTRA::B[i]);
     }
-
-    while (hi - lo > eps) {
-        double mid = 0.5 * (lo + hi);
-        auto   ok  = OKLCh_to_OKLab({L, mid, h});
-        auto   XYZ = OKLab_to_XYZ(ok);
-        auto   lr  = XYZ_to_lRGB(XYZ);
-
-        if (loIn && inGamut(lr)) { lo = mid; }
-        else {
-            auto   clipped2OK = XYZ_to_OKLab(lRGB_to_XYZ({clamp01(lr[0]), clamp01(lr[1]), clamp01(lr[2])}));
-            double dist       = deltaEOK(clipped2OK, ok);
-            if (dist < jnd) {
-                if (jnd - dist < eps) { break; }
-                else {
-                    loIn = false;
-                    lo   = mid;
-                }
-            }
-            else { hi = mid; }
-        }
-    }
-
-    auto ok  = OKLCh_to_OKLab({L, lo, h});
-    auto xyz = OKLab_to_XYZ(ok);
-    auto lr  = XYZ_to_lRGB(xyz);
-    return Color(lr);
-}
-
-// Mixes multiple colors using a model based on the Kubelka–Munk theory.
-//
-// This function implements a mixing algorithm that is inspired by the Kubelka–Munk theory,
-// which models how light interacts with diffusely scattering and absorbing layers (such as pigments or paints).
-// The approach is as follows:
-//
-// - For each wavelength band (with SIZE samples), compute a weighted average of the KS values.
-// - Weights are determined by the square of a factor that considers both the square-root of the color's
-//   luminance and its tinting strength multiplied by a user-specified factor.
-// - The resulting weighted KS average is then converted back using the KM function to obtain the
-//   mixed spectral reflectance.
-//
-// In effect, this method blends pigments based on their optical absorption and scattering properties,
-// providing a physically motivated approximation for pigment mixing as described by Kubelka–Munk.
-//
-// Each argument should be provided as an array of two elements: [Color, factor]. The factor determines
-// the influence of that particular color in the overall mix (simple weight)
-inline Color mix(const std::vector<std::pair<Color, double>> &colors) {
-    std::vector<double> Rm(SIZE, 0.0);
-    for (int i = 0; i < SIZE; ++i) {
-        double ksSum   = 0.0;
-        double concSum = 0.0;
-        for (auto const &[c, factor] : colors) {
-            double const conc  = factor * factor * (c.tintingStrength * c.tintingStrength) * c.luminance();
-            concSum           += conc;
-            ksSum             += c.KS()[i] * conc;
-        }
-        Rm[i] = KM_func(ksSum / concSum);
-    }
-    return Color(Rm);
-}
-
-// Generates a palette of colors transitioning between two colors.
-inline std::vector<Color> palette(const Color &a, const Color &b, int sz) {
-    std::vector<Color> out;
-    out.reserve(sz);
-    for (int i = 0; i < sz; ++i) { out.push_back(mix({{a, double(sz - 1 - i)}, {b, double(i)}})); }
-    return out;
-}
-
-// Interpolates between multiple colors based on a parameter t.
-// Each additional argument should be an array with two elements: [Color, position].
-inline Color gradient(double t, const std::vector<std::pair<Color, double>> &stops) {
-    std::pair<Color, double> a      = {Color(std::array<int, 3>{0, 0, 0}), 0.0};
-    std::pair<Color, double> b      = a;
-    bool                     foundA = false, foundB = false;
-    for (auto const &pr : stops) {
-        if (! foundA || pr.second > a.second) {
-            if (pr.second <= t) {
-                a      = pr;
-                foundA = true;
-            }
-        }
-        if (! foundB || pr.second < b.second) {
-            if (pr.second >= t) {
-                b      = pr;
-                foundB = true;
-            }
-        }
-    }
-    if (! foundA) { return b.first; }
-    if (! foundB) { return a.first; }
-    if (a.second == b.second) { return a.first; }
-    double f = (t - a.second) / (b.second - a.second);
-    return mix({{a.first, 1.0 - f}, {b.first, f}});
+    return R;
 }
 
 // CSS color parsing (#hex or rgb(...))
-inline std::array<int, 4> parseCssColor(const std::string &str) {
+constexpr std::array<int, 4> Converter::parseCssColor(const std::string &str) {
     if (str.empty()) { throw std::invalid_argument("Empty CSS color string"); }
     if (str[0] == '#') {
         std::string hex = str.substr(1);
@@ -685,35 +553,149 @@ inline std::array<int, 4> parseCssColor(const std::string &str) {
     else { throw std::invalid_argument("Unsupported CSS color format: " + str); }
 }
 
-// Convert spectral reflectance from lRGB via detail::BASE_SPECTRA (the inverse of lRGB_to_R in JS)
-inline std::array<double, SIZE> parseSpectralReflectanceFromLRGB(const std::array<double, 3> &lRGB) {
-    // This is the inverse of lRGB_to_R in your JS code.
-    // The JS code subtracts minimum w, c, m, y, r, g, b contributions using detail::BASE_SPECTRA.
-    // Re-implement here:
+// gamutMap (binary search of chroma)
+constexpr Color Color::gamutMap(const Color &color, double jnd, double eps) {
+    double L = color.OKLCh()[0];
+    if (L >= 1.0) { return Color(arr_int3{255, 255, 255}); }
+    if (L <= 0.0) { return Color(arr_int3{0, 0, 0}); }
+    if (detail::inGamut(color.lRGB)) { return color; }
 
-    static constexpr double eps = 1e-12;
+    double h    = color.OKLCh()[2];
+    double lo   = 0.0;
+    double hi   = color.OKLCh()[1];
+    bool   loIn = true;
 
-    double const          w   = std::min(std::min(lRGB[0], lRGB[1]), lRGB[2]);
-    std::array<double, 3> cpy = {lRGB[0] - w, lRGB[1] - w, lRGB[2] - w};
-
-    double const c = std::min(cpy[1], cpy[2]);
-    double const m = std::min(cpy[0], cpy[2]);
-    double const y = std::min(cpy[0], cpy[1]);
-    double const r = std::max(0.0, std::min(cpy[0] - cpy[2], cpy[0] - cpy[1]));
-    double const g = std::max(0.0, std::min(cpy[1] - cpy[2], cpy[1] - cpy[0]));
-    double const b = std::max(0.0, std::min(cpy[2] - cpy[1], cpy[2] - cpy[0]));
-
-    std::array<double, SIZE> R{};
-    for (int i = 0; i < SIZE; ++i) {
-        // ensure at least epsilon
-        R[i] = std::max(eps, w * detail::BASE_SPECTRA::W[i] + c * detail::BASE_SPECTRA::C[i] +
-                                 m * detail::BASE_SPECTRA::M[i] + y * detail::BASE_SPECTRA::Y[i] +
-                                 r * detail::BASE_SPECTRA::R[i] + g * detail::BASE_SPECTRA::G[i] +
-                                 b * detail::BASE_SPECTRA::B[i]);
+    // clipped = lRGB_to_OKLab( clamp each component )
+    arr_dbl3 clippedOK = Converter::XYZ_to_OKLab(Converter::lRGB_to_XYZ(
+        {detail::clamp01(color.lRGB[0]), detail::clamp01(color.lRGB[1]), detail::clamp01(color.lRGB[2])}));
+    double   E         = detail::deltaEOK(clippedOK, Converter::XYZ_to_OKLab(Converter::lRGB_to_XYZ(color.lRGB)));
+    if (E < jnd) {
+        // short-circuit
+        arr_dbl3 tmpXYZ  = Converter::OKLab_to_XYZ(clippedOK);
+        arr_dbl3 tmplRGB = Converter::XYZ_to_lRGB(tmpXYZ);
+        return Color(tmplRGB);
     }
-    return R;
+
+    while (hi - lo > eps) {
+        double mid = 0.5 * (lo + hi);
+        auto   ok  = Converter::OKLCh_to_OKLab({L, mid, h});
+        auto   XYZ = Converter::OKLab_to_XYZ(ok);
+        auto   lr  = Converter::XYZ_to_lRGB(XYZ);
+
+        if (loIn && detail::inGamut(lr)) { lo = mid; }
+        else {
+            auto clipped2OK = Converter::XYZ_to_OKLab(
+                Converter::lRGB_to_XYZ({detail::clamp01(lr[0]), detail::clamp01(lr[1]), detail::clamp01(lr[2])}));
+            double dist = detail::deltaEOK(clipped2OK, ok);
+            if (dist < jnd) {
+                if (jnd - dist < eps) { break; }
+                else {
+                    loIn = false;
+                    lo   = mid;
+                }
+            }
+            else { hi = mid; }
+        }
+    }
+
+    auto ok  = Converter::OKLCh_to_OKLab({L, lo, h});
+    auto xyz = Converter::OKLab_to_XYZ(ok);
+    auto lr  = Converter::XYZ_to_lRGB(xyz);
+    return Color(lr);
 }
 
+constexpr Color Color::mix(const std::vector<std::pair<Color, double>> &colors) {
+    arr_dbl38 Rm{};
+    for (int i = 0; i < detail::SAMPLE_SIZE; ++i) {
+        double ksSum   = 0.0;
+        double concSum = 0.0;
+        for (auto const &[c, factor] : colors) {
+            double const conc  = std::pow(factor, 2) * std::pow(c.tintingStrength, 2) * c.luminance();
+            concSum           += conc;
+            ksSum             += c.KS()[i] * conc;
+        }
+        Rm[i] = detail::KM_func(ksSum / concSum);
+    }
+    return Color(Rm);
+}
+
+// Generates a palette of colors transitioning between two colors.
+constexpr std::vector<Color> Color::palette(const Color &a, const Color &b, int sz) {
+    std::vector<Color> out;
+    out.reserve(sz);
+    for (int i = 0; i < sz; ++i) { out.push_back(mix({{a, double(sz - 1 - i)}, {b, double(i)}})); }
+    return out;
+}
+
+// Interpolates between multiple colors based on a parameter t.
+// Each additional argument should be an array with two elements: [Color, position].
+constexpr Color Color::gradient(double t, const std::vector<std::pair<Color, double>> &stops) {
+    std::pair<Color, double> a      = {Color(arr_int3{0, 0, 0}), 0.0};
+    std::pair<Color, double> b      = a;
+    bool                     foundA = false, foundB = false;
+    for (auto const &pr : stops) {
+        if (! foundA || pr.second > a.second) {
+            if (pr.second <= t) {
+                a      = pr;
+                foundA = true;
+            }
+        }
+        if (! foundB || pr.second < b.second) {
+            if (pr.second >= t) {
+                b      = pr;
+                foundB = true;
+            }
+        }
+    }
+    if (! foundA) { return b.first; }
+    if (! foundB) { return a.first; }
+    if (a.second == b.second) { return a.first; }
+    double f = (t - a.second) / (b.second - a.second);
+    return mix({{a.first, 1.0 - f}, {b.first, f}});
+}
+
+
+constexpr Color Color::toGamut(const std::string &method) const {
+    std::string m = method;
+    std::transform(m.begin(), m.end(), m.begin(), ::tolower);
+    if (m == "clip") {
+        arr_int3 clipped;
+        for (int i = 0; i < 3; ++i) { clipped[i] = int(std::round(std::clamp(sRGB[i], 0, 255))); }
+        return Color(clipped);
+    }
+    else if (m == "map") { return gamutMap(*this); }
+    else { throw std::invalid_argument("Unknown gamut mapping method: " + method); }
+}
+
+constexpr std::string Color::toString(const std::string &format, const std::string &method) const {
+    std::vector<int> outRGB(3);
+    if (! detail::inGamut(lRGB)) {
+        std::string m = method;
+        std::transform(m.begin(), m.end(), m.begin(), ::tolower);
+        if (m == "clip") {
+            for (int i = 0; i < 3; ++i) { outRGB[i] = int(std::round(std::clamp(sRGB[i], 0, 255))); }
+        }
+        else if (m == "map") {
+            Color mapped = gamutMap(*this);
+            outRGB       = {mapped.sRGB[0], mapped.sRGB[1], mapped.sRGB[2]};
+        }
+        else { throw std::invalid_argument("Unknown method in toString: " + method); }
+    }
+    else { outRGB = {sRGB[0], sRGB[1], sRGB[2]}; }
+
+    if (format == "hex" || format == "HEX" || format == "Hex") {
+        std::ostringstream oss;
+        oss << "#";
+        for (int c : outRGB) { oss << std::uppercase << std::hex << std::setw(2) << std::setfill('0') << (c & 0xFF); }
+        return oss.str();
+    }
+    else if (format == "rgb" || format == "RGB") {
+        std::ostringstream oss;
+        oss << "rgb(" << outRGB[0] << "," << outRGB[1] << "," << outRGB[2] << ")";
+        return oss.str();
+    }
+    else { throw std::invalid_argument("Unknown format in toString: " + format); }
+}
 
 } // namespace pigment
 } // namespace incom
